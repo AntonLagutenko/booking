@@ -209,23 +209,27 @@ const ALL_SLOTS = generateSlots();
 // ──────────────────────────────────────────────
 async function fetchBooked(employee, date) {
   try {
-    // CORS-прокси (бесплатный, надежный)
     const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(
       `${SCRIPT_URL}?employee=${encodeURIComponent(employee)}&date=${date}`
     )}`;
     
     const response = await fetch(proxyUrl);
-    const json = await response.json();
+    const text = await response.text();
+    const json = JSON.parse(text);
     
     if (json.status === "ok") {
+      console.log("Занятые слоты:", json.booked); // для отладки
       return new Set(json.booked || []);
     }
     return new Set();
   } catch (err) {
     console.error("fetchBooked failed:", err);
-    return new Set(); // показываем все слоты при ошибке
+    return new Set();
   }
 }
+
+// ✅ book() с text/plain (уже правильно)
+
 // async function fetchBooked(employee, date) {
 //   try {
 //     const url = `${SCRIPT_URL}?employee=${encodeURIComponent(employee)}&date=${date}`;
@@ -318,7 +322,7 @@ async function book(time, date) {
   try {
     const response = await fetch(SCRIPT_URL, {
       method: "POST",
-      headers: { "Content-Type": "text/plain" },  // ← ОБЯЗАТЕЛЬНО text/plain
+      headers: { "Content-Type": "text/plain" },
       body: JSON.stringify(payload)
     });
 
@@ -329,13 +333,12 @@ async function book(time, date) {
       alert("✅ Запись создана!");
       updateSlots();
     } else {
-      alert("❌ " + result.message);
+      alert("❌ " + (result.message || "Ошибка"));
     }
   } catch (err) {
     alert("❌ Ошибка сети");
   }
 }
-
 
 datePicker.addEventListener("change", updateSlots);
 
