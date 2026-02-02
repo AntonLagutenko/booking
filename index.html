@@ -207,9 +207,10 @@ let isUpdating = false;
 // ──────────────────────────────────────────────
 // Загрузка занятых слотов с Google
 // ──────────────────────────────────────────────
-async function fetchBooked(employee, date) {
+async function fetchBooked(employee, date, force = false) {
   try {
-    const url = `${SCRIPT_URL}?employee=${encodeURIComponent(employee)}&date=${date}`;
+    const cacheBuster = force ? `&_=${Date.now()}` : '';
+    const url = `${SCRIPT_URL}?employee=${encodeURIComponent(employee)}&date=${date}${cacheBuster}`;
     const response = await fetch(url, { cache: "no-store" });
 
     if (!response.ok) {
@@ -248,63 +249,6 @@ async function fetchBooked(employee, date) {
     return new Set();
   }
 }
-// async function fetchBooked(employee, date) {
-//   try {
-//     const url = `${SCRIPT_URL}?employee=${encodeURIComponent(employee)}&date=${date}`;
-//     const response = await fetch(url, { cache: "no-store" }); // отключаем кэш
-
-//     if (!response.ok) {
-//       throw new Error(`HTTP ${response.status} — ${response.statusText}`);
-//     }
-
-//     const json = await response.json();
-
-//     if (json.status !== "ok") {
-//       console.warn("Сервер ответил не ok:", json.message);
-//       return new Set();
-//     }
-
-//     // ─── НОРМАЛИЗАЦИЯ ВРЕМЕНИ НА ФРОНТЕ ────────────────────────────────
-//     const normalizeTime = (raw) => {
-//       let s = String(raw || "").trim();
-//       if (!s) return null;
-
-//       // Убираем секунды/миллисекунды если есть ("9:00:00" → "9:00")
-//       s = s.split(/[:.]/).slice(0, 2).join(":");
-
-//       const parts = s.split(":");
-//       if (parts.length !== 2) return null;
-
-//       let h = parts[0].trim();
-//       let m = parts[1].trim();
-
-//       // Приводим к числам и проверяем валидность
-//       const hour = parseInt(h, 10);
-//       const min  = parseInt(m, 10);
-
-//       if (isNaN(hour) || isNaN(min) || hour < 0 || hour > 23 || min < 0 || min > 59) {
-//         return null;
-//       }
-
-//       // Форматируем строго "HH:mm" с ведущим нулём
-//       return `${hour.toString().padStart(2, "0")}:${min.toString().padStart(2, "0")}`;
-//     };
-
-//     const bookedNormalized = (json.booked || [])
-//       .map(normalizeTime)
-//       .filter(t => t !== null);
-
-//     console.log("Занятые слоты после нормализации:", bookedNormalized);
-
-//     return new Set(bookedNormalized);
-
-//   } catch (err) {
-//     console.error("Ошибка загрузки booked:", err);
-//     document.getElementById("error").textContent = "Не удалось загрузить расписание.";
-//     return new Set();
-//   }
-// }
-
 
 // ──────────────────────────────────────────────
 // Отрисовка слотов
@@ -324,31 +268,8 @@ async function updateSlots() {
   }
 
   const date = datePicker.value;
-  let bookedSet = new Set();
-
-  try {
-    bookedSet = await fetchBooked(currentEmployee, date);
-  } catch (err) {
-    // уже показана ошибка внутри fetchBooked
-  }
-
-  slotsDiv.innerHTML = "";
-
-  ALL_SLOTS.forEach(time => {
-    const el = document.createElement("div");
-    el.className = "slot";
-    el.textContent = time;
-
-    if (bookedSet.has(time)) {
-      el.classList.add("booked");
-      el.title = "Занято";
-    } else {
-      el.onclick = () => book(time, date);
-      el.title = "Свободно — кликните для записи";
-    }
-
-    slotsDiv.appendChild(el);
-  });
+  const bookedSet = await fetchBooked(currentEmployee, date, false);
+  renderSlots(bookedSet);
 
   isUpdating = false;
 }
@@ -376,13 +297,33 @@ async function book(time, date) {
 
     if (result.status === "ok") {
       alert("✅ Запись создана!");
-      updateSlots();
+      bookedSet = await fetchBooked(currentEmployee, date, true);  // принудительно
+      renderSlots(bookedSet);       // ← новая вспомогательная функция (см. ниже)
     } else {
       alert("❌ " + (result.message || "Ошибка"));
     }
   } catch (err) {
     alert("❌ Ошибка сети");
   }
+}
+
+function renderSlots(bookedSet) {
+  slotsDiv.innerHTML = "";
+  ALL_SLOTS.forEach(time => {
+    const el = document.createElement("div");
+    el.className = "slot";
+    el.textContent = time;
+
+    if (bookedSet.has(time)) {
+      el.classList.add("booked");
+      el.title = "Занято";
+    } else {
+      el.onclick = () => book(time, datePicker.value);
+      el.title = "Свободно — кликните для записи";
+    }
+
+    slotsDiv.appendChild(el);
+  });
 }
 
 datePicker.addEventListener("change", updateSlots);
