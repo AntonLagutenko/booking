@@ -7,70 +7,89 @@
   <style>
     body {
       font-family: system-ui, sans-serif;
-      max-width: 900px;
+      max-width: 960px;
       margin: 40px auto;
       padding: 0 20px;
+      background: #f8fafc;
     }
-    .container { display: grid; gap: 2rem; grid-template-columns: 1fr 2fr; }
-    @media (max-width: 700px) { .container { grid-template-columns: 1fr; } }
+    h1 { text-align: center; color: #1e40af; }
+    .container {
+      display: grid;
+      gap: 2rem;
+      grid-template-columns: 1fr 2fr;
+    }
+    @media (max-width: 768px) {
+      .container { grid-template-columns: 1fr; }
+    }
 
-    .search-container {
-      position: relative;
-    }
-    #employeeInput {
+    label { display: block; margin: 0.8rem 0 0.4rem; font-weight: 500; }
+    input, select {
       width: 100%;
-      padding: 12px;
-      font-size: 1.1rem;
+      padding: 10px;
+      font-size: 1.05rem;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
       box-sizing: border-box;
     }
+
+    .search-container { position: relative; }
     #employeeList {
       position: absolute;
       width: 100%;
-      max-height: 240px;
+      max-height: 260px;
       overflow-y: auto;
       background: white;
       border: 1px solid #ccc;
-      margin: 0;
+      border-radius: 6px;
+      margin: 4px 0 0;
       padding: 0;
       list-style: none;
-      display: none;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.15);
       z-index: 10;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      display: none;
     }
     #employeeList li {
       padding: 10px 14px;
       cursor: pointer;
     }
-    #employeeList li:hover,
-    #employeeList li.selected {
-      background: #e0f2fe;
+    #employeeList li:hover, #employeeList li.selected {
+      background: #dbeafe;
     }
 
     .slots {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
       gap: 10px;
-      margin-top: 1rem;
+      margin-top: 1.2rem;
     }
     .slot {
       padding: 12px;
       text-align: center;
-      border: 1px solid #ddd;
-      border-radius: 6px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      background: white;
       cursor: pointer;
-      background: #f8fafc;
+      transition: all 0.12s;
+    }
+    .slot:hover:not(.booked) {
+      background: #eff6ff;
+      border-color: #3b82f6;
     }
     .slot.booked {
       background: #fee2e2;
       color: #991b1b;
       cursor: not-allowed;
       text-decoration: line-through;
+      border-color: #fecaca;
     }
     .slot.selected {
       background: #dbeafe;
-      border-color: #3b82f6;
-      font-weight: bold;
+      border-color: #2563eb;
+      font-weight: 600;
     }
+
+    #message { margin-top: 1.5rem; color: #166534; font-weight: 500; }
+    #error   { color: #991b1b; }
   </style>
 </head>
 <body>
@@ -80,31 +99,33 @@
 <div class="container">
   <div>
 
-    <label for="employeeInput">Сотрудник:</label>
+    <label for="employeeInput">Сотрудник</label>
     <div class="search-container">
       <input type="text" id="employeeInput" placeholder="Начните вводить фамилию..." autocomplete="off"/>
       <ul id="employeeList"></ul>
     </div>
 
-    <br><br>
+    <label for="datePicker">Дата</label>
+    <input type="date" id="datePicker"/>
 
-    <label>Выберите дату:</label>
-    <input type="date" id="datePicker" min=""/>
-
-    <div id="selectedEmployee" style="margin: 1.5rem 0; font-weight:bold; min-height:1.5em"></div>
+    <div id="selectedEmployee" style="margin:1.6rem 0; font-size:1.15rem; font-weight:600; min-height:1.8em"></div>
 
   </div>
 
   <div>
-    <h3>Свободные слоты</h3>
+    <h3>Доступные слоты</h3>
     <div id="slotsContainer" class="slots"></div>
+    <div id="message"></div>
+    <div id="error"></div>
   </div>
 </div>
 
 <script>
 // ──────────────────────────────────────────────
-// Данные (в реальном проекте — из базы / API)
+// Настройки
 // ──────────────────────────────────────────────
+const SCRIPT_URL = "https://script.google.com/macros/s/ВАШ_ИДЕНТИФИКАТОР/exec";   // ← ВСТАВЬ СВОЙ URL !!!
+
 const employees = [
   "Иванов Сергей Петрович",
   "Петрова Анна Ивановна",
@@ -114,36 +135,27 @@ const employees = [
   "Васильева Ольга Сергеевна"
 ].sort();
 
-const workingHours = { start: 9, end: 18 }; // 9:00 – 18:00
-const slotDuration = 30; // минут
-
-// booked[employee][date] = ["10:00", "13:30", ...]
-let booked = JSON.parse(localStorage.getItem("booked") || "{}");
+const WORKING_START = 9;
+const WORKING_END   = 18;
+const SLOT_MINUTES  = 30;
 
 // ──────────────────────────────────────────────
-// Поиск сотрудника (живой поиск)
+// Поиск сотрудника
 // ──────────────────────────────────────────────
 const input = document.getElementById("employeeInput");
-const list = document.getElementById("employeeList");
+const list  = document.getElementById("employeeList");
 const selectedDisplay = document.getElementById("selectedEmployee");
 let currentEmployee = null;
 
 function showSuggestions() {
   const val = input.value.trim().toLowerCase();
   list.innerHTML = "";
-  if (val.length < 1) {
-    list.style.display = "none";
-    return;
-  }
+  list.style.display = "none";
 
-  const matches = employees.filter(name =>
-    name.toLowerCase().includes(val)
-  );
+  if (val.length < 1) return;
 
-  if (matches.length === 0) {
-    list.style.display = "none";
-    return;
-  }
+  const matches = employees.filter(name => name.toLowerCase().includes(val));
+  if (matches.length === 0) return;
 
   matches.forEach(name => {
     const li = document.createElement("li");
@@ -151,7 +163,6 @@ function showSuggestions() {
     li.onclick = () => selectEmployee(name);
     list.appendChild(li);
   });
-
   list.style.display = "block";
 }
 
@@ -172,62 +183,108 @@ document.addEventListener("click", e => {
 });
 
 // ──────────────────────────────────────────────
-// Дата и слоты
+// Дата + генерация слотов
 // ──────────────────────────────────────────────
 const datePicker = document.getElementById("datePicker");
-const slotsDiv = document.getElementById("slotsContainer");
+const slotsDiv   = document.getElementById("slotsContainer");
 
-// минимальная дата — сегодня
 datePicker.min = new Date().toISOString().split("T")[0];
 
-function generateTimeSlots() {
+function generateSlots() {
   const slots = [];
-  for (let h = workingHours.start; h < workingHours.end; h++) {
-    for (let m = 0; m < 60; m += slotDuration) {
-      const time = `${h.toString().padStart(2,"0")}:${m.toString().padStart(2,"0")}`;
-      slots.push(time);
+  for (let h = WORKING_START; h < WORKING_END; h++) {
+    for (let m = 0; m < 60; m += SLOT_MINUTES) {
+      const hh = String(h).padStart(2, "0");
+      const mm = String(m).padStart(2, "0");
+      slots.push(`${hh}:${mm}`);
     }
   }
   return slots;
 }
 
-const allPossibleSlots = generateTimeSlots();
+const ALL_SLOTS = generateSlots();
 
-function updateSlots() {
+// ──────────────────────────────────────────────
+// Загрузка занятых слотов с Google
+// ──────────────────────────────────────────────
+async function fetchBooked(employee, date) {
+  try {
+    const url = `${SCRIPT_URL}?employee=${encodeURIComponent(employee)}&date=${date}`;
+    const r = await fetch(url);
+    const json = await r.json();
+
+    if (json.status === "ok") {
+      return new Set(json.booked || []);
+    } else {
+      console.warn("Ошибка сервера:", json.message);
+      return new Set();
+    }
+  } catch (err) {
+    console.error("Не удалось загрузить занятые слоты", err);
+    return new Set();
+  }
+}
+
+// ──────────────────────────────────────────────
+// Отрисовка слотов
+// ──────────────────────────────────────────────
+async function updateSlots() {
+  slotsDiv.innerHTML = "";
+  document.getElementById("message").textContent = "";
+  document.getElementById("error").textContent = "";
+
   if (!currentEmployee || !datePicker.value) {
-    slotsDiv.innerHTML = "<p>Выберите сотрудника и дату</p>";
+    slotsDiv.innerHTML = "<p style='color:#6b7280'>Выберите сотрудника и дату</p>";
     return;
   }
 
   const date = datePicker.value;
-  const bookedTimes = (booked[currentEmployee]?.[date] || []);
+  const bookedSet = await fetchBooked(currentEmployee, date);
 
-  slotsDiv.innerHTML = "";
+  ALL_SLOTS.forEach(time => {
+    const el = document.createElement("div");
+    el.className = "slot";
+    el.textContent = time;
 
-  allPossibleSlots.forEach(time => {
-    const div = document.createElement("div");
-    div.className = "slot";
-    div.textContent = time;
-
-    if (bookedTimes.includes(time)) {
-      div.classList.add("booked");
+    if (bookedSet.has(time)) {
+      el.classList.add("booked");
     } else {
-      div.onclick = () => bookSlot(time, date);
+      el.onclick = () => book(time, date);
     }
 
-    slotsDiv.appendChild(div);
+    slotsDiv.appendChild(el);
   });
 }
 
-function bookSlot(time, date) {
-  if (!booked[currentEmployee]) booked[currentEmployee] = {};
-  if (!booked[currentEmployee][date]) booked[currentEmployee][date] = [];
+// ──────────────────────────────────────────────
+// Создание записи
+// ──────────────────────────────────────────────
+async function book(time, date) {
+  if (!confirm(`Записаться?\n${currentEmployee}\n${date}  ${time}`)) return;
 
-  booked[currentEmployee][date].push(time);
-  localStorage.setItem("booked", JSON.stringify(booked));
+  const payload = {
+    date,
+    time,
+    employee: currentEmployee,
+    client: prompt("Ваше ФИО (можно пропустить)") || "—",
+    phone:  prompt("Телефон (можно пропустить)")  || "—"
+  };
 
-  alert(`Записано!\n${currentEmployee}\n${date} ${time}`);
-  updateSlots();
+  try {
+    const r = await fetch(SCRIPT_URL, {
+      method: "POST",
+      mode: "no-cors",   // ← обязательно для Google Apps Script
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    // При no-cors response не читается → считаем успешным, если не упал
+    alert("Запись добавлена!");
+    await updateSlots();   // перезагружаем слоты → новый слот станет красным
+  } catch (err) {
+    console.error(err);
+    alert("Ошибка при записи. Проверьте интернет или попробуйте позже.");
+  }
 }
 
 datePicker.addEventListener("change", updateSlots);
