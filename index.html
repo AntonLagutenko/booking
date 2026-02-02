@@ -234,44 +234,30 @@ async function checkSlotStatus(time, date) {
 }
 async function fetchBooked(employee, date) {
   try {
-    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(
-      `${SCRIPT_URL}?employee=${encodeURIComponent(employee)}&date=${date}`
-    )}`;
+    const url = `${SCRIPT_URL}?employee=${encodeURIComponent(employee)}&date=${date}`;
+    const response = await fetch(url);
     
-    const response = await fetch(proxyUrl);
-    const text = await response.text();
-    const json = JSON.parse(text);
-    
-    if (json.status === "ok") {
-      console.log("Занятые слоты:", json.booked); // для отладки
-      return new Set(json.booked || []);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
     }
-    return new Set();
+    
+    const json = await response.json();
+
+    if (json.status === "ok") {
+      // важно: приводим к строке и убираем лишние пробелы
+      const booked = (json.booked || []).map(t => String(t).trim());
+      console.log("Занятые слоты:", booked);
+      return new Set(booked);
+    } else {
+      console.warn("Сервер вернул ошибку:", json.message);
+      return new Set();
+    }
   } catch (err) {
-    console.error("fetchBooked failed:", err);
+    console.error("Не удалось загрузить занятые слоты:", err);
     return new Set();
   }
 }
 
-// ✅ book() с text/plain (уже правильно)
-
-// async function fetchBooked(employee, date) {
-//   try {
-//     const url = `${SCRIPT_URL}?employee=${encodeURIComponent(employee)}&date=${date}`;
-//     const r = await fetch(url);
-//     const json = await r.json();
-
-//     if (json.status === "ok") {
-//       return new Set(json.booked || []);
-//     } else {
-//       console.warn("Ошибка сервера:", json.message);
-//       return new Set();
-//     }
-//   } catch (err) {
-//     console.error("Не удалось загрузить занятые слоты", err);
-//     return new Set();
-//   }
-// }
 
 // ──────────────────────────────────────────────
 // Отрисовка слотов
@@ -287,29 +273,40 @@ async function updateSlots() {
   }
 
   const date = datePicker.value;
-  
-  // Показываем ВСЕ слоты (09:00 - 17:30)
-  ALL_SLOTS.forEach(async (time) => {
+
+  // 1. Показываем индикатор загрузки
+  slotsDiv.innerHTML = "<p style='color:#6b7280'>Загрузка доступных слотов...</p>";
+
+  // 2. Получаем ВСЕ занятые слоты одним запросом
+  let bookedSet;
+  try {
+    bookedSet = await fetchBooked(currentEmployee, date);
+  } catch (err) {
+    console.error(err);
+    bookedSet = new Set();
+    document.getElementById("error").textContent = "Не удалось загрузить расписание. Слоты могут отображаться некорректно.";
+  }
+
+  // 3. Теперь рисуем слоты сразу в правильном состоянии
+  slotsDiv.innerHTML = "";
+
+  ALL_SLOTS.forEach(time => {
     const el = document.createElement("div");
     el.className = "slot";
     el.textContent = time;
-    el.dataset.time = time; // для отладки
-    
-    slotsDiv.appendChild(el); // добавляем сразу (серый)
-    
-    // Проверяем статус асинхронно
-    const isBooked = await checkSlotStatus(time, date);
-    
-    if (isBooked) {
+
+    if (bookedSet.has(time)) {
       el.classList.add("booked");
       el.title = "Занято";
     } else {
-      el.onclick = () => book(time, date);
+      el.classList.add("free");           // можно добавить класс, если хочешь стили
       el.title = "Свободно — кликните для записи";
+      el.onclick = () => book(time, date);
     }
+
+    slotsDiv.appendChild(el);
   });
 }
-
 // ──────────────────────────────────────────────
 // Создание записи
 // ──────────────────────────────────────────────
