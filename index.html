@@ -228,22 +228,36 @@ async function fetchBooked(employee, date, force = false) {
     const rawBooked = json.booked || [];
     console.log("Сырые времена из booked:", rawBooked);
 
-    // Простая нормализация — минимум проверок
-    const normalize = (t) => {
-      if (!t) return null;
-      let s = String(t).trim();
-      const parts = s.split(/[:.]/);
-      if (parts.length < 2) return null;
-      const h = parseInt(parts[0], 10);
-      const m = parseInt(parts[1], 10);
-      if (isNaN(h) || isNaN(m)) return null;
-      return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
-    };
+    const normalized = rawBooked
+  .map(item => {
+    if (item instanceof Date && !isNaN(item)) {
+      // Самый надёжный способ — если значение уже Date
+      return Utilities.formatDate(item, Session.getScriptTimeZone(), "HH:mm");
+    }
+    // Если строка — пытаемся парсить
+    let s = String(item || "").trim();
+    if (!s) return null;
 
-    const normalized = rawBooked.map(normalize).filter(Boolean);
-    console.log("После нормализации:", normalized);
+    // Если это классическая строка даты-времени JS
+    if (s.includes("GMT") || s.includes("1899")) {
+      const match = s.match(/(\d{1,2}):(\d{2})/);
+      if (match) return `${match[1].padStart(2,"0")}:${match[2]}`;
+    }
 
-    return new Set(normalized);
+    // Обычные случаи "18:00", "18.00", "18:0"
+    const parts = s.split(/[:.]/);
+    if (parts.length < 2) return null;
+
+    const h = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10);
+    if (isNaN(h) || isNaN(m)) return null;
+
+    return `${h.toString().padStart(2,"0")}:${m.toString().padStart(2,"0")}`;
+  })
+  .filter(Boolean);
+
+console.log("После нормализации:", normalized);
+return new Set(normalized);
   } catch (err) {
     console.error("Ошибка fetchBooked:", err);
     return new Set();
