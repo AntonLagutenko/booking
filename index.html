@@ -108,7 +108,7 @@
     <label for="datePicker">Дата</label>
     <input type="date" id="datePicker"/>
 
-    <div id="selectedEmployee" style="margin:1.6rem 0; font-size:1.15rem; font-weight:600; min-height:1.8em"></div>
+    <!-- <div id="selectedEmployee" style="margin:1.6rem 0; font-size:1.15rem; font-weight:600; min-height:1.8em"></div> -->
 
   </div>
 
@@ -210,25 +210,39 @@ const ALL_SLOTS = generateSlots();
 async function fetchBooked(employee, date) {
   try {
     const url = `${SCRIPT_URL}?employee=${encodeURIComponent(employee)}&date=${date}`;
-    const response = await fetch(url);
-    
+    const response = await fetch(url, { cache: "no-store" }); // отключаем кэш
+
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+      throw new Error(`HTTP ${response.status} — ${response.statusText}`);
     }
-    
+
     const json = await response.json();
 
-    if (json.status === "ok") {
-      // важно: приводим к строке и убираем лишние пробелы
-      const booked = (json.booked || []).map(t => String(t).trim());
-      console.log("Занятые слоты:", booked);
-      return new Set(booked);
-    } else {
-      console.warn("Сервер вернул ошибку:", json.message);
+    if (json.status !== "ok") {
+      console.warn("Сервер ответил не ok:", json.message);
       return new Set();
     }
+
+    // Нормализация времени в формат "09:00"
+    const normalizeTime = (t) => {
+      let s = String(t || "").trim();
+      if (!s.includes(":")) return "";
+      let [h, m] = s.split(":").map(part => part.trim().split(".")[0]); // убираем секунды/миллисекунды
+      h = h.padStart(2, "0");
+      m = (m || "00").padStart(2, "0").slice(0, 2);
+      return `${h}:${m}`;
+    };
+
+    const booked = (json.booked || [])
+      .map(normalizeTime)
+      .filter(t => t && ALL_SLOTS.includes(t)); // только валидные слоты
+
+    console.log(`Занятые слоты (${booked.length} шт):`, booked);
+
+    return new Set(booked);
   } catch (err) {
-    console.error("Не удалось загрузить занятые слоты:", err);
+    console.error("Ошибка при получении booked:", err);
+    document.getElementById("error").textContent = "Не удалось загрузить занятость. Показываем все слоты свободными.";
     return new Set();
   }
 }
@@ -238,31 +252,28 @@ async function fetchBooked(employee, date) {
 // Отрисовка слотов
 // ──────────────────────────────────────────────
 async function updateSlots() {
-  slotsDiv.innerHTML = "";
-  document.getElementById("message").textContent = "";
+  if (isUpdating) return;
+  isUpdating = true;
+
+  slotsDiv.innerHTML = '<p style="color:#6b7280; text-align:center; padding: 3rem 0;">Загрузка слотов...</p>';
   document.getElementById("error").textContent = "";
+  document.getElementById("message").textContent = "";
 
   if (!currentEmployee || !datePicker.value) {
-    slotsDiv.innerHTML = "<p style='color:#6b7280'>Выберите сотрудника и дату</p>";
+    slotsDiv.innerHTML = "<p style='color:#6b7280; text-align:center'>Выберите сотрудника и дату</p>";
+    isUpdating = false;
     return;
   }
 
   const date = datePicker.value;
+  let bookedSet = new Set();
 
-  // 1. Показываем индикатор загрузки
-  slotsDiv.innerHTML = "<p style='color:#6b7280'>Загрузка доступных слотов...</p>";
-
-  // 2. Получаем ВСЕ занятые слоты одним запросом
-  let bookedSet;
   try {
     bookedSet = await fetchBooked(currentEmployee, date);
   } catch (err) {
-    console.error(err);
-    bookedSet = new Set();
-    document.getElementById("error").textContent = "Не удалось загрузить расписание. Слоты могут отображаться некорректно.";
+    // уже показана ошибка внутри fetchBooked
   }
 
-  // 3. Теперь рисуем слоты сразу в правильном состоянии
   slotsDiv.innerHTML = "";
 
   ALL_SLOTS.forEach(time => {
@@ -274,13 +285,14 @@ async function updateSlots() {
       el.classList.add("booked");
       el.title = "Занято";
     } else {
-      el.classList.add("free");           // можно добавить класс, если хочешь стили
-      el.title = "Свободно — кликните для записи";
       el.onclick = () => book(time, date);
+      el.title = "Свободно — кликните для записи";
     }
 
     slotsDiv.appendChild(el);
   });
+
+  isUpdating = false;
 }
 // ──────────────────────────────────────────────
 // Создание записи
