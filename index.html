@@ -1,10 +1,9 @@
 <!DOCTYPE html>
 <html lang="ru">
-
 <head>
   <meta charset="UTF-8" />
   <title>Запись</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <style>
     body {
       font-family: system-ui, sans-serif;
@@ -13,32 +12,17 @@
       padding: 0 20px;
       background: #f8fafc;
     }
-
-    h1 {
-      text-align: center;
-      color: #16537e;
-    }
-
+    h1 { text-align: center; color: #16537e; }
     .container {
       display: grid;
       gap: 2rem;
       grid-template-columns: 1fr 2fr;
     }
-
     @media (max-width: 768px) {
-      .container {
-        grid-template-columns: 1fr;
-      }
+      .container { grid-template-columns: 1fr; }
     }
-
-    label {
-      display: block;
-      margin: 0.8rem 0 0.4rem;
-      font-weight: 500;
-    }
-
-    input,
-    select {
+    label { display: block; margin: 0.8rem 0 0.4rem; font-weight: 500; }
+    input, select {
       width: 100%;
       padding: 10px;
       font-size: 1.05rem;
@@ -46,11 +30,7 @@
       border-radius: 6px;
       box-sizing: border-box;
     }
-
-    .search-container {
-      position: relative;
-    }
-
+    .search-container { position: relative; }
     #employeeList {
       position: absolute;
       width: 100%;
@@ -62,28 +42,23 @@
       margin: 4px 0 0;
       padding: 0;
       list-style: none;
-      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+      box-shadow: 0 6px 16px rgba(0,0,0,0.15);
       z-index: 10;
       display: none;
     }
-
     #employeeList li {
       padding: 10px 14px;
       cursor: pointer;
     }
-
-    #employeeList li:hover,
-    #employeeList li.selected {
+    #employeeList li:hover, #employeeList li.selected {
       background: #dbeafe;
     }
-
     .slots {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
       gap: 10px;
       margin-top: 1.2rem;
     }
-
     .slot {
       padding: 12px;
       text-align: center;
@@ -93,12 +68,10 @@
       cursor: pointer;
       transition: all 0.12s;
     }
-
     .slot:hover:not(.booked) {
       background: #eff6ff;
       border-color: #3b82f6;
     }
-
     .slot.booked {
       background: #fee2e2;
       color: #991b1b;
@@ -106,26 +79,9 @@
       text-decoration: line-through;
       border-color: #fecaca;
     }
+    #message { margin-top: 1.5rem; color: #166534; font-weight: 500; }
+    #error { color: #991b1b; }
 
-    .slot.selected {
-      background: #dbeafe;
-      border-color: #2563eb;
-      font-weight: 600;
-    }
-
-    #message {
-      margin-top: 1.5rem;
-      color: #166534;
-      font-weight: 500;
-    }
-
-    #error {
-      color: #991b1b;
-    }
-
-    /* ────────────────────────────────────────────── */
-    /* Анимация загрузки — три прыгающие точки         */
-    /* ────────────────────────────────────────────── */
     .loading-dots-container {
       display: flex;
       justify-content: center;
@@ -133,7 +89,6 @@
       gap: 10px;
       padding: 5rem 0;
     }
-
     .loading-dot {
       width: 12px;
       height: 12px;
@@ -141,291 +96,256 @@
       border-radius: 50%;
       animation: bounce 1.4s infinite ease-in-out;
     }
-
-    .loading-dot:nth-child(2) {
-      animation-delay: 0.2s;
-    }
-
-    .loading-dot:nth-child(3) {
-      animation-delay: 0.4s;
-    }
-
+    .loading-dot:nth-child(2) { animation-delay: 0.2s; }
+    .loading-dot:nth-child(3) { animation-delay: 0.4s; }
     @keyframes bounce {
-
-      0%,
-      80%,
-      100% {
-        transform: scale(0);
-        opacity: 0.4;
-      }
-
-      40% {
-        transform: scale(1);
-        opacity: 1;
-      }
+      0%, 80%, 100% { transform: scale(0); opacity: 0.4; }
+      40%           { transform: scale(1); opacity: 1;   }
     }
   </style>
 </head>
-
 <body>
 
-  <h1>Выберите сотрудника и дату</h1>
+<h1>Выберите сотрудника и дату</h1>
 
-  <div class="container">
-    <div>
-
-      <label for="employeeInput">Сотрудник</label>
-      <div class="search-container">
-        <input type="text" id="employeeInput" placeholder="Начните вводить фамилию..." autocomplete="off" />
-        <ul id="employeeList"></ul>
-      </div>
-
-      <label for="datePicker">Дата</label>
-      <input type="date" id="datePicker" />
-
-      <!-- <div id="selectedEmployee" style="margin:1.6rem 0; font-size:1.15rem; font-weight:600; min-height:1.8em"></div> -->
-
+<div class="container">
+  <div>
+    <label for="employeeInput">Сотрудник</label>
+    <div class="search-container">
+      <input type="text" id="employeeInput" placeholder="Начните вводить фамилию..." autocomplete="off"/>
+      <ul id="employeeList"></ul>
     </div>
 
-    <div>
-      <h3>Доступные слоты</h3>
-      <div id="slotsContainer" class="slots"></div>
-      <div id="message"></div>
-      <div id="error"></div>
-    </div>
+    <label for="datePicker">Дата</label>
+    <input type="date" id="datePicker"/>
   </div>
 
-  <script>
-    // ──────────────────────────────────────────────
-    // Настройки
-    // ──────────────────────────────────────────────
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbycvzGct5s2WPd_XeKW2swweefuXSOex5pA5gjV-0M5lQ1ZadkE5Htq-WPDE2ggxDUJ/exec";   // ← ВСТАВЬ СВОЙ URL !!!
+  <div>
+    <h3>Доступные слоты</h3>
+    <div id="slotsContainer" class="slots"></div>
+    <div id="message"></div>
+    <div id="error"></div>
+  </div>
+</div>
 
-    const employees = [
-      "Иванов Сергей Петрович",
-      "Петрова Анна Ивановна",
-      "Сидоров Дмитрий Алексеевич",
-      "Козлова Мария Викторовна",
-      "Морозов Павел Николаевич",
-      "Васильева Ольга Сергеевна"
-    ].sort();
+<script>
+const CONFIG = {
+  SCRIPT_URL: "https://script.google.com/macros/s/AKfycbycvzGct5s2WPd_XeKW2swweefuXSOex5pA5gjV-0M5lQ1ZadkE5Htq-WPDE2ggxDUJ/exec",
+  EMPLOYEES: [
+    "Иванов Сергей Петрович",
+    "Петрова Анна Ивановна",
+    "Сидоров Дмитрий Алексеевич",
+    "Козлова Мария Викторовна",
+    "Морозов Павел Николаевич",
+    "Васильева Ольга Сергеевна"
+  ].sort(),
+  WORKING_START: 17,
+  WORKING_END: 20,
+  SLOT_MINUTES: 10
+};
 
-    const WORKING_START = 17;
-    const WORKING_END = 20;
-    const SLOT_MINUTES = 10;
-
-    // ──────────────────────────────────────────────
-    // Поиск сотрудника
-    // ──────────────────────────────────────────────
-    const input = document.getElementById("employeeInput");
-    const list = document.getElementById("employeeList");
-    const selectedDisplay = document.getElementById("selectedEmployee");
-    let currentEmployee = null;
-
-    function showSuggestions() {
-      const val = input.value.trim().toLowerCase();
-      list.innerHTML = "";
-      list.style.display = "none";
-
-      if (val.length < 1) return;
-
-      const matches = employees.filter(name => name.toLowerCase().includes(val));
-      if (matches.length === 0) return;
-
-      matches.forEach(name => {
-        const li = document.createElement("li");
-        li.textContent = name;
-        li.onclick = () => selectEmployee(name);
-        list.appendChild(li);
-      });
-      list.style.display = "block";
+const ALL_SLOTS = (() => {
+  const slots = [];
+  for (let h = CONFIG.WORKING_START; h < CONFIG.WORKING_END; h++) {
+    for (let m = 0; m < 60; m += CONFIG.SLOT_MINUTES) {
+      slots.push(`${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`);
     }
+  }
+  return slots;
+})();
 
-    function selectEmployee(name) {
-      currentEmployee = name;
-      // selectedDisplay.textContent = `Выбран: ${name}`;
-      input.value = name;
-      list.style.display = "none";
-      updateSlots();
-    }
+let isUpdating = false;
+const datePicker = document.getElementById("datePicker");
+const slotsDiv    = document.getElementById("slotsContainer");
+const errorEl     = document.getElementById("error");
+const messageEl   = document.getElementById("message");
 
-    input.addEventListener("input", showSuggestions);
-    input.addEventListener("focus", showSuggestions);
-    document.addEventListener("click", e => {
-      if (!input.contains(e.target) && !list.contains(e.target)) {
-        list.style.display = "none";
-      }
-    });
+let currentEmployee = null;
 
-    // ──────────────────────────────────────────────
-    // Дата + генерация слотов
-    // ──────────────────────────────────────────────
-    const datePicker = document.getElementById("datePicker");
-    const slotsDiv = document.getElementById("slotsContainer");
+// ──────────────────────────────────────────────
+// Утилиты
+// ──────────────────────────────────────────────
+function normalizeTime(raw) {
+  if (!raw) return null;
+  if (raw instanceof Date && !isNaN(raw)) {
+    return `${String(raw.getHours()).padStart(2,"0")}:${String(raw.getMinutes()).padStart(2,"0")}`;
+  }
+  let s = String(raw).trim();
+  if (!s) return null;
+  if (s.includes("GMT") || s.includes("1899")) {
+    const match = s.match(/(\d{1,2}):(\d{2})/);
+    if (match) return `${match[1].padStart(2,"0")}:${match[2]}`;
+  }
+  const parts = s.split(/[:.]/);
+  if (parts.length < 2) return null;
+  const h = parseInt(parts[0], 10);
+  const m = parseInt(parts[1], 10);
+  if (isNaN(h) || isNaN(m)) return null;
+  return `${h.toString().padStart(2,"0")}:${m.toString().padStart(2,"0")}`;
+}
 
-    datePicker.min = new Date().toISOString().split("T")[0];
+// ──────────────────────────────────────────────
+// Поиск сотрудника
+// ──────────────────────────────────────────────
+const input = document.getElementById("employeeInput");
+const list  = document.getElementById("employeeList");
 
-    function generateSlots() {
-      const slots = [];
-      for (let h = WORKING_START; h < WORKING_END; h++) {
-        for (let m = 0; m < 60; m += SLOT_MINUTES) {
-          const hh = String(h).padStart(2, "0");
-          const mm = String(m).padStart(2, "0");
-          slots.push(`${hh}:${mm}`);
-        }
-      }
-      return slots;
-    }
+function showSuggestions() {
+  const val = input.value.trim().toLowerCase();
+  list.innerHTML = "";
+  list.style.display = "none";
+  if (val.length < 1) return;
 
-    const ALL_SLOTS = generateSlots();
-    let isUpdating = false;
-    // ──────────────────────────────────────────────
-    // Загрузка занятых слотов с Google
-    // ──────────────────────────────────────────────
-    async function fetchBooked(employee, date, force = false) {
-      try {
-        const cacheBuster = force ? `&_=${Date.now()}` : '';
-        const url = `${SCRIPT_URL}?employee=${encodeURIComponent(employee)}&date=${date}${cacheBuster}`;
-        const response = await fetch(url, { cache: "no-store" });
+  const matches = CONFIG.EMPLOYEES.filter(name => name.toLowerCase().includes(val));
+  if (!matches.length) return;
 
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
+  matches.forEach(name => {
+    const li = document.createElement("li");
+    li.textContent = name;
+    li.onclick = () => selectEmployee(name);
+    list.appendChild(li);
+  });
+  list.style.display = "block";
+}
 
-        const json = await response.json();
-        console.log("Сырой ответ сервера:", json);
+function selectEmployee(name) {
+  currentEmployee = name;
+  input.value = name;
+  list.style.display = "none";
+  updateSlots();
+}
 
-        if (json.status !== "ok") {
-          console.warn("Сервер вернул ошибку:", json.message);
-          return new Set();
-        }
+input.addEventListener("input", showSuggestions);
+input.addEventListener("focus", showSuggestions);
+document.addEventListener("click", e => {
+  if (!input.contains(e.target) && !list.contains(e.target)) {
+    list.style.display = "none";
+  }
+});
 
-        const rawBooked = json.booked || [];
-        console.log("Сырые времена из booked:", rawBooked);
+// ──────────────────────────────────────────────
+// Загрузка занятых слотов
+// ──────────────────────────────────────────────
+async function fetchBooked(employee, date, force = false) {
+  try {
+    const params = new URLSearchParams({ employee: encodeURIComponent(employee), date });
+    if (force) params.append("_", Date.now());
 
-        const normalized = rawBooked
-          .map(item => {
-            if (item instanceof Date && !isNaN(item)) {
-              // Самый надёжный способ — если значение уже Date
-              return Utilities.formatDate(item, Session.getScriptTimeZone(), "HH:mm");
-            }
-            // Если строка — пытаемся парсить
-            let s = String(item || "").trim();
-            if (!s) return null;
+    const res = await fetch(`${CONFIG.SCRIPT_URL}?${params}`, { cache: "no-store" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-            // Если это классическая строка даты-времени JS
-            if (s.includes("GMT") || s.includes("1899")) {
-              const match = s.match(/(\d{1,2}):(\d{2})/);
-              if (match) return `${match[1].padStart(2, "0")}:${match[2]}`;
-            }
+    const json = await res.json();
+    if (json.status !== "ok") return new Set();
 
-            // Обычные случаи "18:00", "18.00", "18:0"
-            const parts = s.split(/[:.]/);
-            if (parts.length < 2) return null;
+    const times = (json.booked || []).map(normalizeTime).filter(Boolean);
+    return new Set(times);
+  } catch (err) {
+    console.error("fetchBooked error:", err);
+    return new Set();
+  }
+}
 
-            const h = parseInt(parts[0], 10);
-            const m = parseInt(parts[1], 10);
-            if (isNaN(h) || isNaN(m)) return null;
-
-            return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
-          })
-          .filter(Boolean);
-
-        console.log("После нормализации:", normalized);
-        return new Set(normalized);
-      } catch (err) {
-        console.error("Ошибка fetchBooked:", err);
-        return new Set();
-      }
-    }
-
-    // ──────────────────────────────────────────────
-    // Отрисовка слотов
-    // ──────────────────────────────────────────────
-    async function updateSlots() {
-      if (isUpdating) return;
-      isUpdating = true;
-
-      slotsDiv.innerHTML = `
+// ──────────────────────────────────────────────
+// Отрисовка и состояния
+// ──────────────────────────────────────────────
+function showLoading() {
+  slotsDiv.innerHTML = `
     <div class="loading-dots-container">
-      <div class="loading-dot"></div>
-      <div class="loading-dot"></div>
-      <div class="loading-dot"></div>
+      <div class="loading-dot"></div><div class="loading-dot"></div><div class="loading-dot"></div>
     </div>
     <p style="text-align:center; color:#6b7280; margin:1.5rem 0 0;">Загрузка слотов...</p>
   `;
-      document.getElementById("error").textContent = "";
-      document.getElementById("message").textContent = "";
+}
 
-      if (!currentEmployee || !datePicker.value) {
-        slotsDiv.innerHTML = "<p style='color:#6b7280; text-align:center'>Выберите сотрудника и дату</p>";
-        isUpdating = false;
-        return;
-      }
+function showEmpty() {
+  slotsDiv.innerHTML = '<p style="color:#6b7280; text-align:center">Выберите сотрудника и дату</p>';
+}
 
-      const date = datePicker.value;
-      const bookedSet = await fetchBooked(currentEmployee, date, false);
-      renderSlots(bookedSet);
+function renderSlots(bookedSet) {
+  const fragment = document.createDocumentFragment();
+  ALL_SLOTS.forEach(time => {
+    const el = document.createElement("div");
+    el.className = "slot";
+    el.textContent = time;
 
-      isUpdating = false;
+    if (bookedSet.has(time)) {
+      el.classList.add("booked");
+      el.title = "Занято";
+    } else {
+      el.title = "Свободно — кликните для записи";
+      el.onclick = () => book(time, datePicker.value);
     }
-    // ──────────────────────────────────────────────
-    // Создание записи
-    // ──────────────────────────────────────────────
-    async function book(time, date) {
-      if (!confirm(`Записаться?\n${currentEmployee}\n${date} ${time}`)) return;
+    fragment.appendChild(el);
+  });
 
-      const payload = {
-        date, time, employee: currentEmployee,
-        client: prompt("Ваше ФИО") || "—",
-        phone: prompt("Телефон") || "—"
-      };
+  slotsDiv.innerHTML = "";
+  slotsDiv.appendChild(fragment);
+}
 
-      try {
-        const response = await fetch(SCRIPT_URL, {
-          method: "POST",
-          headers: { "Content-Type": "text/plain" },
-          body: JSON.stringify(payload)
-        });
+async function updateSlots() {
+  if (isUpdating) return;
+  isUpdating = true;
 
-        const text = await response.text();
-        const result = JSON.parse(text);
+  showLoading();
+  errorEl.textContent = "";
+  messageEl.textContent = "";
 
-        if (result.status === "ok") {
-          alert("✅ Запись создана!");
-          updateSlots();
-        } else {
-          alert("❌ " + (result.message || "Ошибка"));
-        }
-      } catch (err) {
-        alert("❌ Ошибка сети");
-      }
+  if (!currentEmployee || !datePicker.value) {
+    showEmpty();
+    isUpdating = false;
+    return;
+  }
+
+  try {
+    const booked = await fetchBooked(currentEmployee, datePicker.value);
+    renderSlots(booked);
+  } catch {
+    slotsDiv.innerHTML = '<p style="color:#991b1b; text-align:center">Ошибка загрузки расписания</p>';
+  } finally {
+    isUpdating = false;
+  }
+}
+
+// ──────────────────────────────────────────────
+// Создание записи
+// ──────────────────────────────────────────────
+async function book(time, date) {
+  if (!confirm(`Записаться на ${date} ${time} к ${currentEmployee}?`)) return;
+
+  const client = prompt("Ваше ФИО")?.trim() || "—";
+  const phone  = prompt("Телефон")?.trim()  || "—";
+
+  const payload = { date, time, employee: currentEmployee, client, phone };
+
+  try {
+    const res = await fetch(CONFIG.SCRIPT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    const data = await res.json();
+
+    if (data.status === "ok") {
+      alert("✅ Запись создана!");
+      await updateSlots();
+    } else {
+      alert(`❌ ${data.message || "Ошибка сервера"}`);
     }
+  } catch (err) {
+    console.error("Ошибка записи:", err);
+    alert("❌ Не удалось записаться. Попробуйте позже.");
+  }
+}
 
-    function renderSlots(bookedSet) {
-      slotsDiv.innerHTML = "";
-      ALL_SLOTS.forEach(time => {
-        const el = document.createElement("div");
-        el.className = "slot";
-        el.textContent = time;
-
-        if (bookedSet.has(time)) {
-          el.classList.add("booked");
-          el.title = "Занято";
-        } else {
-          el.onclick = () => book(time, datePicker.value);
-          el.title = "Свободно — кликните для записи";
-        }
-
-        slotsDiv.appendChild(el);
-      });
-    }
-
-    datePicker.addEventListener("change", updateSlots);
-
-    // Инициализация
-    datePicker.value = new Date().toISOString().split("T")[0];
+// ──────────────────────────────────────────────
+// Инициализация
+// ──────────────────────────────────────────────
+datePicker.min = new Date().toISOString().split("T")[0];
+datePicker.value = datePicker.min;
+datePicker.addEventListener("change", updateSlots);
   </script>
 </body>
-
 </html>
