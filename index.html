@@ -301,7 +301,7 @@ async function book(time, date) {
   try {
     const response = await fetch(SCRIPT_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "text/plain" },
       body: JSON.stringify(payload)
       // mode: "no-cors" — лучше убрать совсем, если возможно
     });
