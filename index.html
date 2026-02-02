@@ -18,9 +18,7 @@
       gap: 2rem;
       grid-template-columns: 1fr 2fr;
     }
-    @media (max-width: 768px) {
-      .container { grid-template-columns: 1fr; }
-    }
+    @media (max-width: 768px) { .container { grid-template-columns: 1fr; } }
     label { display: block; margin: 0.8rem 0 0.4rem; font-weight: 500; }
     input, select {
       width: 100%;
@@ -32,76 +30,52 @@
     }
     .search-container { position: relative; }
     #employeeList {
-      position: absolute;
-      width: 100%;
-      max-height: 260px;
-      overflow-y: auto;
-      background: white;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-      margin: 4px 0 0;
-      padding: 0;
-      list-style: none;
-      box-shadow: 0 6px 16px rgba(0,0,0,0.15);
-      z-index: 10;
-      display: none;
+      position: absolute; width: 100%; max-height: 260px; overflow-y: auto;
+      background: white; border: 1px solid #ccc; border-radius: 6px;
+      margin: 4px 0 0; padding: 0; list-style: none;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.15); z-index: 10; display: none;
     }
-    #employeeList li {
-      padding: 10px 14px;
-      cursor: pointer;
-    }
-    #employeeList li:hover, #employeeList li.selected {
-      background: #dbeafe;
-    }
+    #employeeList li { padding: 10px 14px; cursor: pointer; }
+    #employeeList li:hover, #employeeList li.selected { background: #dbeafe; }
     .slots {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-      gap: 10px;
-      margin-top: 1.2rem;
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+      gap: 10px; margin-top: 1.2rem;
     }
     .slot {
-      padding: 12px;
-      text-align: center;
-      border: 1px solid #d1d5db;
-      border-radius: 8px;
-      background: white;
-      cursor: pointer;
-      transition: all 0.12s;
+      padding: 12px; text-align: center; border: 1px solid #d1d5db;
+      border-radius: 8px; background: white; cursor: pointer; transition: all 0.12s;
     }
-    .slot:hover:not(.booked) {
-      background: #eff6ff;
-      border-color: #3b82f6;
-    }
+    .slot:hover:not(.booked) { background: #eff6ff; border-color: #3b82f6; }
     .slot.booked {
-      background: #fee2e2;
-      color: #991b1b;
-      cursor: not-allowed;
-      text-decoration: line-through;
-      border-color: #fecaca;
+      background: #fee2e2; color: #991b1b; cursor: not-allowed;
+      text-decoration: line-through; border-color: #fecaca;
     }
     #message { margin-top: 1.5rem; color: #166534; font-weight: 500; }
     #error { color: #991b1b; }
 
     .loading-dots-container {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 10px;
-      padding: 5rem 0;
+      display: flex; justify-content: center; align-items: center; gap: 10px; padding: 5rem 0;
     }
     .loading-dot {
-      width: 12px;
-      height: 12px;
-      background: #64748b;
-      border-radius: 50%;
+      width: 12px; height: 12px; background: #64748b; border-radius: 50%;
       animation: bounce 1.4s infinite ease-in-out;
     }
     .loading-dot:nth-child(2) { animation-delay: 0.2s; }
     .loading-dot:nth-child(3) { animation-delay: 0.4s; }
     @keyframes bounce {
       0%, 80%, 100% { transform: scale(0); opacity: 0.4; }
-      40%           { transform: scale(1); opacity: 1;   }
+      40% { transform: scale(1); opacity: 1; }
     }
+
+    /* Стили для состояний процесса и успеха */
+    .process-state, .success-state, .error-state {
+      text-align: center; padding: 6rem 1rem; min-height: 300px;
+      display: flex; flex-direction: column; justify-content: center; align-items: center;
+    }
+    .success-state { color: #166534; }
+    .success-state .icon { font-size: 6rem; margin-bottom: 1rem; }
+    .error-state { color: #991b1b; }
+    .error-state .icon { font-size: 5rem; margin-bottom: 1rem; }
   </style>
 </head>
 <body>
@@ -132,12 +106,8 @@
 const CONFIG = {
   SCRIPT_URL: "https://script.google.com/macros/s/AKfycbycvzGct5s2WPd_XeKW2swweefuXSOex5pA5gjV-0M5lQ1ZadkE5Htq-WPDE2ggxDUJ/exec",
   EMPLOYEES: [
-    "Иванов Сергей Петрович",
-    "Петрова Анна Ивановна",
-    "Сидоров Дмитрий Алексеевич",
-    "Козлова Мария Викторовна",
-    "Морозов Павел Николаевич",
-    "Васильева Ольга Сергеевна"
+    "Иванов Сергей Петрович", "Петрова Анна Ивановна", "Сидоров Дмитрий Алексеевич",
+    "Козлова Мария Викторовна", "Морозов Павел Николаевич", "Васильева Ольга Сергеевна"
   ].sort(),
   WORKING_START: 17,
   WORKING_END: 20,
@@ -155,16 +125,12 @@ const ALL_SLOTS = (() => {
 })();
 
 let isUpdating = false;
-const datePicker = document.getElementById("datePicker");
-const slotsDiv    = document.getElementById("slotsContainer");
-const errorEl     = document.getElementById("error");
-const messageEl   = document.getElementById("message");
-
+const datePicker   = document.getElementById("datePicker");
+const employeeInput = document.getElementById("employeeInput");
+const slotsDiv     = document.getElementById("slotsContainer");
 let currentEmployee = null;
 
-// ──────────────────────────────────────────────
-// Утилиты
-// ──────────────────────────────────────────────
+// ─── Утилиты ────────────────────────────────────────
 function normalizeTime(raw) {
   if (!raw) return null;
   if (raw instanceof Date && !isNaN(raw)) {
@@ -184,21 +150,16 @@ function normalizeTime(raw) {
   return `${h.toString().padStart(2,"0")}:${m.toString().padStart(2,"0")}`;
 }
 
-// ──────────────────────────────────────────────
-// Поиск сотрудника
-// ──────────────────────────────────────────────
-const input = document.getElementById("employeeInput");
-const list  = document.getElementById("employeeList");
+// ─── Поиск сотрудника ───────────────────────────────
+const list = document.getElementById("employeeList");
 
 function showSuggestions() {
-  const val = input.value.trim().toLowerCase();
+  const val = employeeInput.value.trim().toLowerCase();
   list.innerHTML = "";
   list.style.display = "none";
   if (val.length < 1) return;
-
-  const matches = CONFIG.EMPLOYEES.filter(name => name.toLowerCase().includes(val));
+  const matches = CONFIG.EMPLOYEES.filter(n => n.toLowerCase().includes(val));
   if (!matches.length) return;
-
   matches.forEach(name => {
     const li = document.createElement("li");
     li.textContent = name;
@@ -210,44 +171,39 @@ function showSuggestions() {
 
 function selectEmployee(name) {
   currentEmployee = name;
-  input.value = name;
+  employeeInput.value = name;
   list.style.display = "none";
   updateSlots();
 }
 
-input.addEventListener("input", showSuggestions);
-input.addEventListener("focus", showSuggestions);
+employeeInput.addEventListener("input", showSuggestions);
+employeeInput.addEventListener("focus", showSuggestions);
 document.addEventListener("click", e => {
-  if (!input.contains(e.target) && !list.contains(e.target)) {
+  if (!employeeInput.contains(e.target) && !list.contains(e.target)) {
     list.style.display = "none";
   }
 });
 
-// ──────────────────────────────────────────────
-// Загрузка занятых слотов
-// ──────────────────────────────────────────────
+// ─── Работа с датами и слотами ──────────────────────
+datePicker.min = new Date().toISOString().split("T")[0];
+datePicker.value = datePicker.min;
+
 async function fetchBooked(employee, date, force = false) {
   try {
     const params = new URLSearchParams({ employee: encodeURIComponent(employee), date });
     if (force) params.append("_", Date.now());
-
     const res = await fetch(`${CONFIG.SCRIPT_URL}?${params}`, { cache: "no-store" });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
     const json = await res.json();
     if (json.status !== "ok") return new Set();
-
     const times = (json.booked || []).map(normalizeTime).filter(Boolean);
     return new Set(times);
   } catch (err) {
-    console.error("fetchBooked error:", err);
+    console.error("fetchBooked:", err);
     return new Set();
   }
 }
 
-// ──────────────────────────────────────────────
-// Отрисовка и состояния
-// ──────────────────────────────────────────────
 function showLoading() {
   slotsDiv.innerHTML = `
     <div class="loading-dots-container">
@@ -262,12 +218,11 @@ function showEmpty() {
 }
 
 function renderSlots(bookedSet) {
-  const fragment = document.createDocumentFragment();
+  const frag = document.createDocumentFragment();
   ALL_SLOTS.forEach(time => {
     const el = document.createElement("div");
     el.className = "slot";
     el.textContent = time;
-
     if (bookedSet.has(time)) {
       el.classList.add("booked");
       el.title = "Занято";
@@ -275,20 +230,16 @@ function renderSlots(bookedSet) {
       el.title = "Свободно — кликните для записи";
       el.onclick = () => book(time, datePicker.value);
     }
-    fragment.appendChild(el);
+    frag.appendChild(el);
   });
-
   slotsDiv.innerHTML = "";
-  slotsDiv.appendChild(fragment);
+  slotsDiv.appendChild(frag);
 }
 
 async function updateSlots() {
   if (isUpdating) return;
   isUpdating = true;
-
   showLoading();
-  errorEl.textContent = "";
-  messageEl.textContent = "";
 
   if (!currentEmployee || !datePicker.value) {
     showEmpty();
@@ -296,24 +247,41 @@ async function updateSlots() {
     return;
   }
 
-  try {
-    const booked = await fetchBooked(currentEmployee, datePicker.value);
-    renderSlots(booked);
-  } catch {
-    slotsDiv.innerHTML = '<p style="color:#991b1b; text-align:center">Ошибка загрузки расписания</p>';
-  } finally {
-    isUpdating = false;
-  }
+  const booked = await fetchBooked(currentEmployee, datePicker.value);
+  renderSlots(booked);
+  isUpdating = false;
 }
 
-// ──────────────────────────────────────────────
-// Создание записи
-// ──────────────────────────────────────────────
+// ─── Создание записи с блокировкой и процессом ──────
 async function book(time, date) {
   if (!confirm(`Записаться на ${date} ${time} к ${currentEmployee}?`)) return;
 
   const client = prompt("Ваше ФИО")?.trim() || "—";
-  const phone  = prompt("Телефон")?.trim()  || "—";
+  const phone  = prompt("Телефон")?.trim();
+
+  if (!phone) {
+    alert("Укажите номер телефона");
+    return;
+  }
+
+  // Блокируем поля ввода
+  datePicker.disabled = true;
+  employeeInput.disabled = true;
+  employeeInput.placeholder = "Запись в процессе...";
+
+  // Показываем индикатор процесса
+  slotsDiv.innerHTML = `
+    <div class="process-state">
+      <div class="loading-dots-container" style="padding:3rem 0;">
+        <div class="loading-dot"></div>
+        <div class="loading-dot"></div>
+        <div class="loading-dot"></div>
+      </div>
+      <p style="font-size:1.25rem; margin-top:1rem; color:#166534;">
+        Создаём запись...
+      </p>
+    </div>
+  `;
 
   const payload = { date, time, employee: currentEmployee, client, phone };
 
@@ -329,23 +297,41 @@ async function book(time, date) {
     const data = await res.json();
 
     if (data.status === "ok") {
-      alert("✅ Запись создана!");
-      await updateSlots();
+      // Показываем успех ТОЛЬКО после ответа сервера
+      slotsDiv.innerHTML = `
+        <div class="success-state">
+          <div class="icon">✔</div>
+          <h2>Запись успешно создана!</h2>
+          <p style="margin:1rem 0; font-size:1.1rem;">
+            ${client}<br>
+            ${phone}<br>
+            ${date} в ${time}
+          </p>
+          <small style="color:#6b7280;">Спасибо за запись</small>
+        </div>
+      `;
     } else {
-      alert(`❌ ${data.message || "Ошибка сервера"}`);
+      throw new Error(data.message || "Ошибка сервера");
     }
   } catch (err) {
-    console.error("Ошибка записи:", err);
-    alert("❌ Не удалось записаться. Попробуйте позже.");
+    console.error(err);
+    slotsDiv.innerHTML = `
+      <div class="error-state">
+        <div class="icon">✗</div>
+        <h2>Не удалось создать запись</h2>
+        <p>${err.message || "Ошибка связи"}</p>
+      </div>
+    `;
   }
+  // Поля остаются заблокированными
+  // Если хотите разблокировать — раскомментируйте:
+  // datePicker.disabled = false;
+  // employeeInput.disabled = false;
+  // employeeInput.placeholder = "Начните вводить фамилию...";
 }
 
-// ──────────────────────────────────────────────
-// Инициализация
-// ──────────────────────────────────────────────
-datePicker.min = new Date().toISOString().split("T")[0];
-datePicker.value = datePicker.min;
+// ─── Инициализация ──────────────────────────────────
 datePicker.addEventListener("change", updateSlots);
-  </script>
+</script>
 </body>
 </html>
