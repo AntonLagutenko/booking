@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <title>Запись на приём битч work</title>
+  <title>Запись на приём</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <style>
     body {
@@ -94,7 +94,7 @@
 </head>
 <body>
 
-<h1>Запись на приём</h1>
+<h1>Запись на приём жопа</h1>
 
 <div class="container">
   <div>
@@ -207,6 +207,31 @@ const ALL_SLOTS = generateSlots();
 // ──────────────────────────────────────────────
 // Загрузка занятых слотов с Google
 // ──────────────────────────────────────────────
+async function checkSlotStatus(time, date) {
+  try {
+    const response = await fetch(SCRIPT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify({ 
+        date, 
+        time, 
+        employee: currentEmployee,
+        client: "CHECK",  // маркер проверки
+        phone: "CHECK"
+      })
+    });
+    
+    const text = await response.text();
+    const result = JSON.parse(text);
+    
+    // Если слот занят — возвращаем true
+    return result.status === "error" && result.message === "Это время уже занято";
+    
+  } catch (err) {
+    console.warn("Проверка слота не удалась:", time, err);
+    return false; // считаем свободным при ошибке
+  }
+}
 async function fetchBooked(employee, date) {
   try {
     const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(
@@ -262,50 +287,28 @@ async function updateSlots() {
   }
 
   const date = datePicker.value;
-  const bookedSet = await fetchBooked(currentEmployee, date);
-
-  const freeSlots = ALL_SLOTS.filter(time => !bookedSet.has(time));
-
-  if (freeSlots.length === 0) {
-    slotsDiv.innerHTML = "<p style='color:#ef4444'>Все слоты заняты</p>";
-    return;
-  }
-
-  freeSlots.forEach(time => {
+  
+  // Показываем ВСЕ слоты (09:00 - 17:30)
+  ALL_SLOTS.forEach(async (time) => {
     const el = document.createElement("div");
     el.className = "slot";
     el.textContent = time;
-    el.onclick = () => book(time, date);
-    slotsDiv.appendChild(el);
+    el.dataset.time = time; // для отладки
+    
+    slotsDiv.appendChild(el); // добавляем сразу (серый)
+    
+    // Проверяем статус асинхронно
+    const isBooked = await checkSlotStatus(time, date);
+    
+    if (isBooked) {
+      el.classList.add("booked");
+      el.title = "Занято";
+    } else {
+      el.onclick = () => book(time, date);
+      el.title = "Свободно — кликните для записи";
+    }
   });
 }
-// async function updateSlots() {
-//   slotsDiv.innerHTML = "";
-//   document.getElementById("message").textContent = "";
-//   document.getElementById("error").textContent = "";
-
-//   if (!currentEmployee || !datePicker.value) {
-//     slotsDiv.innerHTML = "<p style='color:#6b7280'>Выберите сотрудника и дату</p>";
-//     return;
-//   }
-
-//   const date = datePicker.value;
-//   const bookedSet = await fetchBooked(currentEmployee, date);
-
-//   ALL_SLOTS.forEach(time => {
-//     const el = document.createElement("div");
-//     el.className = "slot";
-//     el.textContent = time;
-
-//     if (bookedSet.has(time)) {
-//       el.classList.add("booked");
-//     } else {
-//       el.onclick = () => book(time, date);
-//     }
-
-//     slotsDiv.appendChild(el);
-//   });
-// }
 
 // ──────────────────────────────────────────────
 // Создание записи
