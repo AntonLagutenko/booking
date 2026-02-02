@@ -207,31 +207,6 @@ const ALL_SLOTS = generateSlots();
 // ──────────────────────────────────────────────
 // Загрузка занятых слотов с Google
 // ──────────────────────────────────────────────
-async function checkSlotStatus(time, date) {
-  try {
-    const response = await fetch(SCRIPT_URL, {
-      method: "POST",
-      headers: { "Content-Type": "text/plain" },
-      body: JSON.stringify({ 
-        date, 
-        time, 
-        employee: currentEmployee,
-        client: "CHECK",  // маркер проверки
-        phone: "CHECK"
-      })
-    });
-    
-    const text = await response.text();
-    const result = JSON.parse(text);
-    
-    // Если слот занят — возвращаем true
-    return result.status === "error" && result.message === "Это время уже занято";
-    
-  } catch (err) {
-    console.warn("Проверка слота не удалась:", time, err);
-    return false; // считаем свободным при ошибке
-  }
-}
 async function fetchBooked(employee, date) {
   try {
     const url = `${SCRIPT_URL}?employee=${encodeURIComponent(employee)}&date=${date}`;
