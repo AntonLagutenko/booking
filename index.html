@@ -344,6 +344,12 @@ async function book(time, date) {
 
     if (result.status === "ok") {
       alert("✅ Запись создана!");
+      // Самое важное: заново загружаем актуальные занятые слоты
+      // и сразу перерисовываем таблицу
+      const freshBooked = await fetchBooked(currentEmployee, date, true);
+
+      // Перерисовываем слоты с актуальными данными
+      renderSlots(freshBooked);
       bookedSet = await fetchBooked(currentEmployee, date, true);  // принудительно
       renderSlots(bookedSet);       // ← новая вспомогательная функция (см. ниже)
     } else {
