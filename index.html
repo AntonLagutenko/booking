@@ -291,46 +291,32 @@ async function book(time, date) {
   if (!confirm(`Записаться?\n${currentEmployee}\n${date} ${time}`)) return;
 
   const payload = {
-    date,
-    time,
-    employee: currentEmployee,
-    client: prompt("Ваше ФИО (можно пропустить)") || "—",
-    phone: prompt("Телефон (можно пропустить)") || "—"
+    date, time, employee: currentEmployee,
+    client: prompt("Ваше ФИО") || "—",
+    phone: prompt("Телефон") || "—"
   };
 
   try {
     const response = await fetch(SCRIPT_URL, {
       method: "POST",
-      headers: { "Content-Type": "text/plain" },
+      headers: { "Content-Type": "text/plain" },  // ← ОБЯЗАТЕЛЬНО text/plain
       body: JSON.stringify(payload)
-      // mode: "no-cors" — лучше убрать совсем, если возможно
     });
 
-    // Пытаемся прочитать ответ (если нет no-cors — сработает)
-    let result;
-    try {
-      result = await response.json();
-    } catch (e) {
-      // если no-cors — json не прочитается
-      result = { status: "unknown" };
-    }
+    const text = await response.text();
+    const result = JSON.parse(text);
 
     if (result.status === "ok") {
-      alert("Запись успешно добавлена!");
-      await updateSlots();
-    } else if (result.status === "error") {
-      alert("Не удалось записаться: " + (result.message || "неизвестная ошибка"));
-      await updateSlots(); // на всякий случай обновляем
+      alert("✅ Запись создана!");
+      updateSlots();
     } else {
-      alert("Запись выполнена, но подтверждение не получено.\nОбновите страницу и проверьте.");
-      await updateSlots();
+      alert("❌ " + result.message);
     }
-
   } catch (err) {
-    console.error(err);
-    alert("Ошибка связи с сервером. Попробуйте позже.");
+    alert("❌ Ошибка сети");
   }
 }
+
 
 datePicker.addEventListener("change", updateSlots);
 
