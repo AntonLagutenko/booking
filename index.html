@@ -10,7 +10,7 @@
       max-width: 960px;
       margin: 40px auto;
       padding: 0 20px;
-      background: #1c7385;
+      background: #f8fafc;
       /* #f8fafc */
     }
     h1 { text-align: center; color: #16537e; }
@@ -117,6 +117,47 @@
       0%, 80%, 100% { transform: scale(0); opacity: 0.4; }
       40%           { transform: scale(1); opacity: 1;   }
     }
+    /* ────────────────────────────────────────────── */
+    /* Анимация успеха — оверлей с галочкой            */
+    /* ────────────────────────────────────────────── */
+    #successOverlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+    .success-box {
+      background: white;
+      padding: 3rem 4rem;
+      border-radius: 12px;
+      text-align: center;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+      min-width: 320px;
+    }
+    .success-icon {
+      font-size: 5.5rem;
+      color: #16a34a;
+      margin-bottom: 1rem;
+      animation: success-pop 1.2s ease-out;
+    }
+    .success-text {
+      font-size: 1.4rem;
+      color: #166534;
+      font-weight: 500;
+      animation: fadeIn 1.5s ease-in;
+    }
+    @keyframes success-pop {
+      0%   { transform: scale(0.3); opacity: 0; }
+      60%  { transform: scale(1.15); opacity: 1; }
+      100% { transform: scale(1); }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
   </style>
 </head>
 <body>
@@ -144,6 +185,14 @@
     <div id="slotsContainer" class="slots"></div>
     <div id="message"></div>
     <div id="error"></div>
+  </div>
+</div>
+
+<!-- Оверлей успеха — появляется поверх всего экрана -->
+<div id="successOverlay">
+  <div class="success-box">
+    <div class="success-icon">✔</div>
+    <div class="success-text">Запись успешно создана</div>
   </div>
 </div>
 
@@ -367,10 +416,16 @@ async function book(time, date) {
     const text = await response.text();
     const result = JSON.parse(text);
 
-    if (result.status === "ok") {
-      alert("✅ Запись создана!");
-      bookedSet = await fetchBooked(currentEmployee, date, true);  // принудительно
-      renderSlots(bookedSet);       // ← новая вспомогательная функция (см. ниже)
+       if (result.status === "ok") {
+      // Показываем красивый оверлей успеха
+      document.getElementById("successOverlay").style.display = "flex";
+
+      // Через 1.8 секунды скрываем оверлей и обновляем слоты
+      setTimeout(async () => {
+        document.getElementById("successOverlay").style.display = "none";
+        const freshBooked = await fetchBooked(currentEmployee, date, true);
+        renderSlots(freshBooked);
+      }, 1800);
     } else {
       alert("❌ " + (result.message || "Ошибка"));
     }
@@ -378,6 +433,17 @@ async function book(time, date) {
     alert("❌ Ошибка сети");
   }
 }
+//     if (result.status === "ok") {
+//       alert("✅ Запись создана!");
+//       bookedSet = await fetchBooked(currentEmployee, date, true);  // принудительно
+//       renderSlots(bookedSet);       // ← новая вспомогательная функция (см. ниже)
+//     } else {
+//       alert("❌ " + (result.message || "Ошибка"));
+//     }
+//   } catch (err) {
+//     alert("❌ Ошибка сети");
+//   }
+// }
 
 function renderSlots(bookedSet) {
   slotsDiv.innerHTML = "";
