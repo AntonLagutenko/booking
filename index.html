@@ -1,121 +1,21 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-  <meta charset="UTF-8" />
-  <title>Запись</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    body {
-      font-family: system-ui, sans-serif;
-      max-width: 960px;
-      margin: 40px auto;
-      padding: 0 20px;
-      background: #f8fafc;
-    }
-    h1 { text-align: center; color: #16537e; }
-    .container {
-      display: grid;
-      gap: 2rem;
-      grid-template-columns: 1fr 2fr;
-    }
-    @media (max-width: 768px) { .container { grid-template-columns: 1fr; } }
-    label { display: block; margin: 0.8rem 0 0.4rem; font-weight: 500; }
-    input, select {
-      width: 100%;
-      padding: 10px;
-      font-size: 1.05rem;
-      border: 1px solid #d1d5db;
-      border-radius: 6px;
-      box-sizing: border-box;
-    }
-    .search-container { position: relative; }
-    #employeeList {
-      position: absolute; width: 100%; max-height: 260px; overflow-y: auto;
-      background: white; border: 1px solid #ccc; border-radius: 6px;
-      margin: 4px 0 0; padding: 0; list-style: none;
-      box-shadow: 0 6px 16px rgba(0,0,0,0.15); z-index: 10; display: none;
-    }
-    #employeeList li { padding: 10px 14px; cursor: pointer; }
-    #employeeList li:hover, #employeeList li.selected { background: #dbeafe; }
-    .slots {
-      display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-      gap: 10px; margin-top: 1.2rem;
-    }
-    .slot {
-      padding: 12px; text-align: center; border: 1px solid #d1d5db;
-      border-radius: 8px; background: white; cursor: pointer; transition: all 0.12s;
-    }
-    .slot:hover:not(.booked) { background: #eff6ff; border-color: #3b82f6; }
-    .slot.booked {
-      background: #fee2e2; color: #991b1b; cursor: not-allowed;
-      text-decoration: line-through; border-color: #fecaca;
-    }
-    #message { margin-top: 1.5rem; color: #166534; font-weight: 500; }
-    #error { color: #991b1b; }
-
-    .loading-dots-container {
-      display: flex; justify-content: center; align-items: center; gap: 10px; padding: 5rem 0;
-    }
-    .loading-dot {
-      width: 12px; height: 12px; background: #64748b; border-radius: 50%;
-      animation: bounce 1.4s infinite ease-in-out;
-    }
-    .loading-dot:nth-child(2) { animation-delay: 0.2s; }
-    .loading-dot:nth-child(3) { animation-delay: 0.4s; }
-    @keyframes bounce {
-      0%, 80%, 100% { transform: scale(0); opacity: 0.4; }
-      40% { transform: scale(1); opacity: 1; }
-    }
-
-    /* Стили для состояний процесса и успеха */
-    .process-state, .success-state, .error-state {
-      text-align: center; padding: 6rem 1rem; min-height: 300px;
-      display: flex; flex-direction: column; justify-content: center; align-items: center;
-    }
-    .success-state { color: #166534; }
-    .success-state .icon { font-size: 6rem; margin-bottom: 1rem; }
-    .error-state { color: #991b1b; }
-    .error-state .icon { font-size: 5rem; margin-bottom: 1rem; }
-
-    /* Кнопка "Новая запись" */
-    .btn-new {
-      margin-top: 1rem;
-      padding: 10px 18px;
-      background: #2563eb;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 1rem;
-    }
-    .btn-new:hover { background: #1e40af; }
-  </style>
-</head>
-<body>
-
-<h1>Выберите сотрудника и дату</h1>
-
-<div class="container">
-  <div>
-    <label for="employeeInput">Сотрудник</label>
-    <div class="search-container">
-      <input type="text" id="employeeInput" placeholder="Начните вводить фамилию..." autocomplete="off"/>
-      <ul id="employeeList"></ul>
-    </div>
-
-    <label for="datePicker">Дата</label>
-    <input type="date" id="datePicker"/>
-  </div>
-
-  <div>
-    <h3>Доступные слоты</h3>
-    <div id="slotsContainer" class="slots"></div>
-    <div id="message"></div>
-    <div id="error"></div>
-  </div>
-</div>
-
 <script>
+// === Параметры скорости/кэша ===
+const CACHE_TTL = 60 * 1000; // 1 минута кэша
+const DEBOUNCE_MS = 220;
+
+const cache = new Map(); // key => {set: Set(times), ts: timestamp}
+let currentFetchController = null;
+
+// debounce helper
+function debounce(fn, ms) {
+  let t = null;
+  return (...args) => {
+    clearTimeout(t);
+    t = setTimeout(() => fn(...args), ms);
+  };
+}
+
+// === Существующие константы/элементы (как было) ===
 const CONFIG = {
   SCRIPT_URL: "https://script.google.com/macros/s/AKfycbycvzGct5s2WPd_XeKW2swweefuXSOex5pA5gjV-0M5lQ1ZadkE5Htq-WPDE2ggxDUJ/exec",
   EMPLOYEES: [
@@ -144,7 +44,7 @@ const slotsDiv     = document.getElementById("slotsContainer");
 const list = document.getElementById("employeeList");
 let currentEmployee = null;
 
-// ─── Утилиты ────────────────────────────────────────
+// --- normalizeTime, showSuggestions, selectEmployee и прочие утилиты оставляем — можно вставить ваши реализации ---
 function normalizeTime(raw) {
   if (!raw) return null;
   if (raw instanceof Date && !isNaN(raw)) {
@@ -164,8 +64,8 @@ function normalizeTime(raw) {
   return `${h.toString().padStart(2,"0")}:${m.toString().padStart(2,"0")}`;
 }
 
-// ─── Поиск сотрудника ───────────────────────────────
-function showSuggestions() {
+// suggestions (debounced)
+function showSuggestionsImmediate() {
   const val = employeeInput.value.trim().toLowerCase();
   list.innerHTML = "";
   list.style.display = "none";
@@ -180,12 +80,13 @@ function showSuggestions() {
   });
   list.style.display = "block";
 }
+const showSuggestions = debounce(showSuggestionsImmediate, 180);
 
 function selectEmployee(name) {
   currentEmployee = name;
   employeeInput.value = name;
   list.style.display = "none";
-  updateSlots();
+  updateSlots(); // вызываем обновление (оно тоже дебаунсится)
 }
 
 employeeInput.addEventListener("input", showSuggestions);
@@ -196,21 +97,27 @@ document.addEventListener("click", e => {
   }
 });
 
-// ─── Работа с датами и слотами ──────────────────────
+// --- Работа с датами/слотами, с кэшем и отменой запросов ---
 datePicker.min = new Date().toISOString().split("T")[0];
 datePicker.value = datePicker.min;
 
-async function fetchBooked(employee, date, force = false) {
+// fetchBooked теперь поддерживает signal
+async function fetchBooked(employee, date, force = false, signal = undefined) {
   try {
     const params = new URLSearchParams({ employee: encodeURIComponent(employee), date });
     if (force) params.append("_", Date.now());
-    const res = await fetch(`${CONFIG.SCRIPT_URL}?${params}`, { cache: "no-store" });
+    const res = await fetch(`${CONFIG.SCRIPT_URL}?${params}`, { cache: "no-store", signal });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const json = await res.json();
     if (json.status !== "ok") return new Set();
     const times = (json.booked || []).map(normalizeTime).filter(Boolean);
     return new Set(times);
   } catch (err) {
+    if (err.name === 'AbortError') {
+      // Запрос отменён — не логируем как ошибку
+      console.debug("fetchBooked aborted");
+      throw err;
+    }
     console.error("fetchBooked:", err);
     return new Set();
   }
@@ -239,7 +146,7 @@ function renderSlots(bookedSet) {
       el.classList.add("booked");
       el.title = "Занято";
     } else {
-      el.title = "Свободно — кликните для записи";
+      el.title = "Св��бодно — кликните для записи";
       el.onclick = () => book(time, datePicker.value);
     }
     frag.appendChild(el);
@@ -248,10 +155,10 @@ function renderSlots(bookedSet) {
   slotsDiv.appendChild(frag);
 }
 
-async function updateSlots() {
+// Обёртка updateSlots с дебаунсом, кэшем и AbortController
+const updateSlotsImmediate = async () => {
   if (isUpdating) return;
   isUpdating = true;
-  showLoading();
 
   if (!currentEmployee || !datePicker.value) {
     showEmpty();
@@ -259,29 +166,69 @@ async function updateSlots() {
     return;
   }
 
-  const booked = await fetchBooked(currentEmployee, datePicker.value);
-  renderSlots(booked);
-  isUpdating = false;
-}
+  const key = `${currentEmployee}|${datePicker.value}`;
+  const cached = cache.get(key);
+  const now = Date.now();
 
-// ─── Вспомогательная функция сброса интерфейса ─────
+  // Если есть свежий кэш — немедленно отрисовать
+  if (cached && (now - cached.ts) < CACHE_TTL) {
+    renderSlots(cached.set);
+    // всё равно обновим в фоне, но не блокируем UI
+    (async () => {
+      try {
+        // отменяем предыдущий фоновый запрос
+        if (currentFetchController) currentFetchController.abort();
+        currentFetchController = new AbortController();
+        const fresh = await fetchBooked(currentEmployee, datePicker.value, false, currentFetchController.signal);
+        cache.set(key, { set: fresh, ts: Date.now() });
+        // если данные изменились — обновим UI (могли занять слоты)
+        renderSlots(fresh);
+      } catch (err) {
+        if (err.name !== 'AbortError') console.debug("background refresh failed", err);
+      } finally {
+        currentFetchController = null;
+      }
+    })();
+    isUpdating = false;
+    return;
+  }
+
+  // нет кэша или устарел — показываем индикатор и фетчим
+  showLoading();
+
+  try {
+    // отменяем предыдущий запрос (важно при быстром переключении)
+    if (currentFetchController) currentFetchController.abort();
+    currentFetchController = new AbortController();
+    const booked = await fetchBooked(currentEmployee, datePicker.value, false, currentFetchController.signal);
+    cache.set(key, { set: booked, ts: Date.now() });
+    renderSlots(booked);
+  } catch (err) {
+    if (err.name !== 'AbortError') {
+      showEmpty();
+    }
+  } finally {
+    currentFetchController = null;
+    isUpdating = false;
+  }
+};
+const updateSlots = debounce(updateSlotsImmediate, DEBOUNCE_MS);
+
+// --- Сброс интерфейса ---
 function resetForNewBooking() {
-  // разблокировать поля и вернуть плейсхолдер
   datePicker.disabled = false;
   employeeInput.disabled = false;
   employeeInput.placeholder = "Начните вводить фамилию...";
-  // очистить выбор сотрудника/даты
   currentEmployee = null;
   employeeInput.value = "";
   list.style.display = "none";
   datePicker.value = datePicker.min;
-  // показать пустое состояние слотов
   showEmpty();
 }
 
-// ─── Создание записи с блокировкой и процессом ──────
+// --- Создание записи: оптимистическое обновление кэша при успехе ---
 async function book(time, date) {
-  if (!confirm(`Записаться ��а ${date} ${time} к ${currentEmployee}?`)) return;
+  if (!confirm(`Записаться на ${date} ${time} к ${currentEmployee}?`)) return;
 
   const client = prompt("Ваше ФИО")?.trim() || "—";
   const phone  = prompt("Телефон")?.trim();
@@ -324,7 +271,18 @@ async function book(time, date) {
     const data = await res.json();
 
     if (data.status === "ok") {
-      // Показываем успех ТОЛЬКО после ответа сервера
+      // обновляем кэш оптимистично: пометим слот занятым
+      const key = `${currentEmployee}|${date}`;
+      const entry = cache.get(key);
+      if (entry) {
+        entry.set.add(time);
+        entry.ts = Date.now();
+      } else {
+        const s = new Set([time]);
+        cache.set(key, { set: s, ts: Date.now() });
+      }
+
+      // Показываем успех
       slotsDiv.innerHTML = `
         <div class="success-state">
           <div class="icon">✔</div>
@@ -338,13 +296,9 @@ async function book(time, date) {
           <button id="newBookingBtn" class="btn-new">Новая запись</button>
         </div>
       `;
-      // Привязка обработчика кнопки
       const btn = document.getElementById("newBookingBtn");
-      if (btn) {
-        btn.addEventListener("click", () => {
-          resetForNewBooking();
-        });
-      }
+      if (btn) btn.addEventListener("click", () => { resetForNewBooking(); });
+
     } else {
       throw new Error(data.message || "Ошибка сервера");
     }
@@ -357,16 +311,13 @@ async function book(time, date) {
         <p>${err.message || "Ошибка связи"}</p>
       </div>
     `;
-    // Можно разблокировать поля после ошибки, если нужно:
+    // разблокируем поля после ошибки
     datePicker.disabled = false;
     employeeInput.disabled = false;
     employeeInput.placeholder = "Начните вводить фамилию...";
   }
-  // Поля остаются заблокированными после успешной записи до нажатия кнопки "Новая запись"
 }
 
-// ─── Инициализация ──────────────────────────────────
+// --- Инициализация событий ---
 datePicker.addEventListener("change", updateSlots);
 </script>
-</body>
-</html>
