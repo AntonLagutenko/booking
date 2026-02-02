@@ -260,30 +260,47 @@ async function updateSlots() {
 // Создание записи
 // ──────────────────────────────────────────────
 async function book(time, date) {
-  if (!confirm(`Записаться?\n${currentEmployee}\n${date}  ${time}`)) return;
+  if (!confirm(`Записаться?\n${currentEmployee}\n${date} ${time}`)) return;
 
   const payload = {
     date,
     time,
     employee: currentEmployee,
     client: prompt("Ваше ФИО (можно пропустить)") || "—",
-    phone:  prompt("Телефон (можно пропустить)")  || "—"
+    phone: prompt("Телефон (можно пропустить)") || "—"
   };
 
   try {
-    const r = await fetch(SCRIPT_URL, {
+    const response = await fetch(SCRIPT_URL, {
       method: "POST",
-      mode: "no-cors",   // ← обязательно для Google Apps Script
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
+      // mode: "no-cors" — лучше убрать совсем, если возможно
     });
 
-    // При no-cors response не читается → считаем успешным, если не упал
-    alert("Запись добавлена!");
-    await updateSlots();   // перезагружаем слоты → новый слот станет красным
+    // Пытаемся прочитать ответ (если нет no-cors — сработает)
+    let result;
+    try {
+      result = await response.json();
+    } catch (e) {
+      // если no-cors — json не прочитается
+      result = { status: "unknown" };
+    }
+
+    if (result.status === "ok") {
+      alert("Запись успешно добавлена!");
+      await updateSlots();
+    } else if (result.status === "error") {
+      alert("Не удалось записаться: " + (result.message || "неизвестная ошибка"));
+      await updateSlots(); // на всякий случай обновляем
+    } else {
+      alert("Запись выполнена, но подтверждение не получено.\nОбновите страницу и проверьте.");
+      await updateSlots();
+    }
+
   } catch (err) {
     console.error(err);
-    alert("Ошибка при записи. Проверьте интернет или попробуйте позже.");
+    alert("Ошибка связи с сервером. Попробуйте позже.");
   }
 }
 
