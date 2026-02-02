@@ -241,20 +241,48 @@ async function updateSlots() {
   const date = datePicker.value;
   const bookedSet = await fetchBooked(currentEmployee, date);
 
-  ALL_SLOTS.forEach(time => {
+  const freeSlots = ALL_SLOTS.filter(time => !bookedSet.has(time));
+
+  if (freeSlots.length === 0) {
+    slotsDiv.innerHTML = "<p style='color:#ef4444'>Все слоты заняты</p>";
+    return;
+  }
+
+  freeSlots.forEach(time => {
     const el = document.createElement("div");
     el.className = "slot";
     el.textContent = time;
-
-    if (bookedSet.has(time)) {
-      el.classList.add("booked");
-    } else {
-      el.onclick = () => book(time, date);
-    }
-
+    el.onclick = () => book(time, date);
     slotsDiv.appendChild(el);
   });
 }
+// async function updateSlots() {
+//   slotsDiv.innerHTML = "";
+//   document.getElementById("message").textContent = "";
+//   document.getElementById("error").textContent = "";
+
+//   if (!currentEmployee || !datePicker.value) {
+//     slotsDiv.innerHTML = "<p style='color:#6b7280'>Выберите сотрудника и дату</p>";
+//     return;
+//   }
+
+//   const date = datePicker.value;
+//   const bookedSet = await fetchBooked(currentEmployee, date);
+
+//   ALL_SLOTS.forEach(time => {
+//     const el = document.createElement("div");
+//     el.className = "slot";
+//     el.textContent = time;
+
+//     if (bookedSet.has(time)) {
+//       el.classList.add("booked");
+//     } else {
+//       el.onclick = () => book(time, date);
+//     }
+
+//     slotsDiv.appendChild(el);
+//   });
+// }
 
 // ──────────────────────────────────────────────
 // Создание записи
