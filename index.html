@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Запись на приём</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 0 20px;
+    }
+    .container { display: grid; gap: 2rem; grid-template-columns: 1fr 2fr; }
+    @media (max-width: 700px) { .container { grid-template-columns: 1fr; } }
+
+    .search-container {
+      position: relative;
+    }
+    #employeeInput {
+      width: 100%;
+      padding: 12px;
+      font-size: 1.1rem;
+      box-sizing: border-box;
+    }
+    #employeeList {
+      position: absolute;
+      width: 100%;
+      max-height: 240px;
+      overflow-y: auto;
+      background: white;
+      border: 1px solid #ccc;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: none;
+      z-index: 10;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    #employeeList li {
+      padding: 10px 14px;
+      cursor: pointer;
+    }
+    #employeeList li:hover,
+    #employeeList li.selected {
+      background: #e0f2fe;
+    }
+
+    .slots {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+      gap: 10px;
+      margin-top: 1rem;
+    }
+    .slot {
+      padding: 12px;
+      text-align: center;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      cursor: pointer;
+      background: #f8fafc;
+    }
+    .slot.booked {
+      background: #fee2e2;
+      color: #991b1b;
+      cursor: not-allowed;
+      text-decoration: line-through;
+    }
+    .slot.selected {
+      background: #dbeafe;
+      border-color: #3b82f6;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Запись на приём</h1>
+
+<div class="container">
+  <div>
+
+    <label for="employeeInput">Сотрудник:</label>
+    <div class="search-container">
+      <input type="text" id="employeeInput" placeholder="Начните вводить фамилию..." autocomplete="off"/>
+      <ul id="employeeList"></ul>
+    </div>
+
+    <br><br>
+
+    <label>Выберите дату:</label>
+    <input type="date" id="datePicker" min=""/>
+
+    <div id="selectedEmployee" style="margin: 1.5rem 0; font-weight:bold; min-height:1.5em"></div>
+
+  </div>
+
+  <div>
+    <h3>Свободные слоты</h3>
+    <div id="slotsContainer" class="slots"></div>
+  </div>
+</div>
+
+<script>
+// ──────────────────────────────────────────────
+// Данные (в реальном проекте — из базы / API)
+// ──────────────────────────────────────────────
+const employees = [
+  "Иванов Сергей Петрович",
+  "Петрова Анна Ивановна",
+  "Сидоров Дмитрий Алексеевич",
+  "Козлова Мария Викторовна",
+  "Морозов Павел Николаевич",
+  "Васильева Ольга Сергеевна"
+].sort();
+
+const workingHours = { start: 9, end: 18 }; // 9:00 – 18:00
+const slotDuration = 30; // минут
+
+// booked[employee][date] = ["10:00", "13:30", ...]
+let booked = JSON.parse(localStorage.getItem("booked") || "{}");
+
+// ──────────────────────────────────────────────
+// Поиск сотрудника (живой поиск)
+// ──────────────────────────────────────────────
+const input = document.getElementById("employeeInput");
+const list = document.getElementById("employeeList");
+const selectedDisplay = document.getElementById("selectedEmployee");
+let currentEmployee = null;
+
+function showSuggestions() {
+  const val = input.value.trim().toLowerCase();
+  list.innerHTML = "";
+  if (val.length < 1) {
+    list.style.display = "none";
+    return;
+  }
+
+  const matches = employees.filter(name =>
+    name.toLowerCase().includes(val)
+  );
+
+  if (matches.length === 0) {
+    list.style.display = "none";
+    return;
+  }
+
+  matches.forEach(name => {
+    const li = document.createElement("li");
+    li.textContent = name;
+    li.onclick = () => selectEmployee(name);
+    list.appendChild(li);
+  });
+
+  list.style.display = "block";
+}
+
+function selectEmployee(name) {
+  currentEmployee = name;
+  selectedDisplay.textContent = `Выбран: ${name}`;
+  input.value = name;
+  list.style.display = "none";
+  updateSlots();
+}
+
+input.addEventListener("input", showSuggestions);
+input.addEventListener("focus", showSuggestions);
+document.addEventListener("click", e => {
+  if (!input.contains(e.target) && !list.contains(e.target)) {
+    list.style.display = "none";
+  }
+});
+
+// ──────────────────────────────────────────────
+// Дата и слоты
+// ──────────────────────────────────────────────
+const datePicker = document.getElementById("datePicker");
+const slotsDiv = document.getElementById("slotsContainer");
+
+// минимальная дата — сегодня
+datePicker.min = new Date().toISOString().split("T")[0];
+
+function generateTimeSlots() {
+  const slots = [];
+  for (let h = workingHours.start; h < workingHours.end; h++) {
+    for (let m = 0; m < 60; m += slotDuration) {
+      const time = `${h.toString().padStart(2,"0")}:${m.toString().padStart(2,"0")}`;
+      slots.push(time);
+    }
+  }
+  return slots;
+}
+
+const allPossibleSlots = generateTimeSlots();
+
+function updateSlots() {
+  if (!currentEmployee || !datePicker.value) {
+    slotsDiv.innerHTML = "<p>Выберите сотрудника и дату</p>";
+    return;
+  }
+
+  const date = datePicker.value;
+  const bookedTimes = (booked[currentEmployee]?.[date] || []);
+
+  slotsDiv.innerHTML = "";
+
+  allPossibleSlots.forEach(time => {
+    const div = document.createElement("div");
+    div.className = "slot";
+    div.textContent = time;
+
+    if (bookedTimes.includes(time)) {
+      div.classList.add("booked");
+    } else {
+      div.onclick = () => bookSlot(time, date);
+    }
+
+    slotsDiv.appendChild(div);
+  });
+}
+
+function bookSlot(time, date) {
+  if (!booked[currentEmployee]) booked[currentEmployee] = {};
+  if (!booked[currentEmployee][date]) booked[currentEmployee][date] = [];
+
+  booked[currentEmployee][date].push(time);
+  localStorage.setItem("booked", JSON.stringify(booked));
+
+  alert(`Записано!\n${currentEmployee}\n${date} ${time}`);
+  updateSlots();
+}
+
+datePicker.addEventListener("change", updateSlots);
+
+// Инициализация
+datePicker.value = new Date().toISOString().split("T")[0];
+</script>
+</body>
+</html>
