@@ -11,7 +11,6 @@
       margin: 40px auto;
       padding: 0 20px;
       background: #f8fafc;
-      /* #f8fafc */
     }
     h1 { text-align: center; color: #16537e; }
     .container {
@@ -154,14 +153,12 @@
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbycvzGct5s2WPd_XeKW2swweefuXSOex5pA5gjV-0M5lQ1ZadkE5Htq-WPDE2ggxDUJ/exec";   // ← ВСТАВЬ СВОЙ URL !!!
 
 const employees = [
-  "Иванов Иван Иванович",
-  "Петрова Петра Петровна",
-  "Сидоров Сидор Сидорович",
-  "Морозов Мороз Морозович",
-  "Васильева Василиса Васильевна",
-  "Евгеньева Евгения Евгеньевна",
-  "Антонова Антонина Антоновна",
-  "Макаров Макар Макарович",
+  "Иванов Сергей Петрович",
+  "Петрова Анна Ивановна",
+  "Сидоров Дмитрий Алексеевич",
+  "Козлова Мария Викторовна",
+  "Морозов Павел Николаевич",
+  "Васильева Ольга Сергеевна"
 ].sort();
 
 const WORKING_START = 17;
@@ -215,33 +212,9 @@ document.addEventListener("click", e => {
 // Дата + генерация слотов
 // ──────────────────────────────────────────────
 const datePicker = document.getElementById("datePicker");
-const slotsDiv = document.getElementById("slotsContainer");
+const slotsDiv   = document.getElementById("slotsContainer");
 
-// ─── Новый код: ограничение дат ────────────────────────────────
-const today = new Date();
-const tomorrow = new Date(today);
-tomorrow.setDate(today.getDate() + 1);
-
-const maxDate = new Date(today);
-maxDate.setDate(today.getDate() + 7);   // +7 дней от сегодня → доступно 7 дней вперёд
-
-// Форматируем в YYYY-MM-DD
-datePicker.min = tomorrow.toISOString().split("T")[0];
-datePicker.max = maxDate.toISOString().split("T")[0];
-
-// Если текущая выбранная дата недопустима — сбрасываем на завтра
-if (!datePicker.value || datePicker.value < datePicker.min || datePicker.value > datePicker.max) {
-  datePicker.value = datePicker.min;
-} else {
-  // если дата уже была выбрана и она в пределах — оставляем
-}
-// // ──────────────────────────────────────────────
-// // Дата + генерация слотов
-// // ──────────────────────────────────────────────
-// const datePicker = document.getElementById("datePicker");
-// const slotsDiv   = document.getElementById("slotsContainer");
-
-// datePicker.min = new Date().toISOString().split("T")[0];
+datePicker.min = new Date().toISOString().split("T")[0];
 
 function generateSlots() {
   const slots = [];
